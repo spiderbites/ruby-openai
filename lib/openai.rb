@@ -41,7 +41,8 @@ module OpenAI
                   :extra_headers
 
     DEFAULT_API_VERSION = "v1".freeze
-    DEFAULT_URI_BASE = "https://api.openai.com/".freeze
+    # DEFAULT_URI_BASE = "https://api.openai.com/".freeze
+    DEFAULT_URI_BASE = "https://openai-proxy.shopify.ai/".freeze
     DEFAULT_REQUEST_TIMEOUT = 120
 
     def initialize

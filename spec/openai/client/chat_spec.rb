@@ -73,6 +73,7 @@ RSpec.describe OpenAI::Client do
           let(:chunks) { [] }
           let(:stream) do
             proc do |chunk, _bytesize|
+              puts "CHUNK #{chunk}"
               chunks << chunk
             end
           end
@@ -151,6 +152,73 @@ RSpec.describe OpenAI::Client do
                 expect(e.response[:body]).to eq("")
               else
                 raise "Expected to raise Faraday::ServerError"
+              end
+            end
+          end
+
+          context "with an invalid tool call" do
+            let(:cassette) { "#{model} invalid tool call chat".downcase }
+            let(:tool_call_id) { "fake" }
+            let(:messages) do
+              [
+                {
+                  "role" => "assistant",
+                  "tool_calls": [
+                    {
+                      "id" => tool_call_id,
+                      "type" => "function",
+                      "function" => {
+                        "name" => "function_name",
+                        "arguments" => {
+                          "user" => "user name"
+                        }.to_json
+                      }
+                    }
+                  ]
+                },
+                {
+                  "role" => "tool",
+                  "tool_call_id": tool_call_id,
+                  "content" => "function content"
+                }
+              ]
+            end
+            let(:parameters) do
+              {
+                model: model,
+                messages: messages,
+                stream: stream,
+                tools: tools
+              }
+            end
+            let(:tools) do
+              [
+                {
+                  "type" => "function",
+                  "function" => {
+                    "name" => "function",
+                    "description" => "function",
+                    "parameters" =>
+                      {
+                        "type" => "object",
+                        "properties" => {
+                          "user" => {
+                            "type" => "string",
+                            "description" => "the full name of the user"
+                          }
+                        }
+                      }
+                  }
+                }
+              ]
+            end
+
+            it "raises an error containing the reason" do
+              VCR.use_cassette(cassette) do
+                response
+              rescue Faraday::Error => e
+                expect(e.response.dig(:body, "error",
+                                      "message")).to include("Missing parameter 'name'")
               end
             end
           end
