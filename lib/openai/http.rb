@@ -57,17 +57,25 @@ module OpenAI
     # @return [Proc] An outer proc that iterates over a raw stream, converting it to JSON.
     def to_json_stream(user_proc:)
       parser = EventStreamParser::Parser.new
-
+      error_body = String.new
       proc do |chunk, _bytes, env|
         if env && env.status != 200
-          raise_error = Faraday::Response::RaiseError.new
-          raise_error.on_complete(env.merge(body: try_parse_json(chunk)))
-        end
-
-        parser.feed(chunk) do |_type, data|
-          user_proc.call(JSON.parse(data)) unless data == "[DONE]"
+          error_body << chunk
+          try_handle_error(error_body)
+        else
+          parser.feed(chunk) do |_type, data|
+            user_proc.call(JSON.parse(data)) unless data == "[DONE]"
+          end
         end
       end
+    end
+
+    def try_handle_error(error_body)
+      parsed_error_body = JSON.parse(error_body)
+      raise_error = Faraday::Response::RaiseError.new
+      raise_error.on_complete(env.merge(body: parsed_error_body))
+    rescue JSON::ParserError
+      # The error body is not full JSON, keep reading chunks
     end
 
     def conn(multipart: false)
