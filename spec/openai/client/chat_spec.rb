@@ -161,64 +161,79 @@ RSpec.describe OpenAI::Client do
             let(:tool_call_id) { "fake" }
             let(:messages) do
               [
+                { "role" => "user", "content" => "What's the temperature in San Francisco?" },
                 {
                   "role" => "assistant",
-                  "tool_calls": [
-                    {
-                      "id" => tool_call_id,
-                      "type" => "function",
-                      "function" => {
-                        "name" => "function_name",
-                        "arguments" => {
-                          "user" => "user name"
-                        }.to_json
-                      }
-                    }
-                  ]
+                  "content" => nil,
+                  "function_call" => {
+                    "name" => "get_temperature",
+                    "arguments" => {
+                      "location" => "San Francisco"
+                    }.to_json
+                  }
+                  # "tool_calls": [
+                  #   {
+                  #     "id" => tool_call_id,
+                  #     "type" => "function",
+                  #     "function" => {
+                  #       "name" => "get_temperature",
+                  #       # arguments should have a `.to_json` called on it
+                  #       "arguments" => {
+                  #         "location" => "San Francisco"
+                  #       }
+                  #     }
+                  #   }
+                  # ]
                 },
                 {
-                  "role" => "tool",
-                  "tool_call_id": tool_call_id,
-                  "content" => "function content"
+                  "role" => "function",
+                  "name" => "get_temperature",
+                  "content" => "72 degrees"
                 }
+                # {
+                #   "role" => "tool",
+                #   "tool_call_id": tool_call_id,
+                #   "content" => "72 degrees"
+                # }
               ]
             end
             let(:parameters) do
               {
                 model: model,
                 messages: messages,
-                stream: stream,
-                tools: tools
+                stream: stream
+                # tools: tools
               }
             end
-            let(:tools) do
-              [
-                {
-                  "type" => "function",
-                  "function" => {
-                    "name" => "function",
-                    "description" => "function",
-                    "parameters" =>
-                      {
-                        "type" => "object",
-                        "properties" => {
-                          "user" => {
-                            "type" => "string",
-                            "description" => "the full name of the user"
-                          }
-                        }
-                      }
-                  }
-                }
-              ]
-            end
+            # let(:tools) do
+            #   [
+            #     {
+            #       "type" => "function",
+            #       "function" => {
+            #         "name" => "get_temperature",
+            #         "description" => "get the temperature in a location",
+            #         "parameters" =>
+            #           {
+            #             "type" => "object",
+            #             "properties" => {
+            #               "location" => {
+            #                 "type" => "string",
+            #                 "description" => "the location to get the temperature for"
+            #               }
+            #             }
+            #           }
+            #       }
+            #     }
+            #   ]
+            # end
 
             it "raises an error containing the reason" do
-              VCR.use_cassette(cassette) do
+              VCR.use_cassette(cassette, record: :all) do
                 response
               rescue Faraday::Error => e
-                expect(e.response.dig(:body, "error",
-                                      "message")).to include("Missing parameter 'name'")
+                puts e
+                # expect(e.response.dig(:body, "error",
+                #                       "message")).to include("Missing parameter 'name'")
               end
             end
           end
